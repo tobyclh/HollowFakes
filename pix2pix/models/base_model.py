@@ -75,6 +75,7 @@ class BaseModel():
     def load_networks(self, which_epoch):
         for name in self.model_names:
             if isinstance(name, str):
+                print(f'Model : {self.name()}, name : {name}')
                 save_filename = '%s_net_%s.pth' % (which_epoch, name)
                 save_path = os.path.join(self.save_dir, save_filename)
                 net = getattr(self, 'net' + name)

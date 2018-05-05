@@ -1,5 +1,5 @@
 import torch
-from util.image_pool import ImagePool
+from ..util.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
 
@@ -48,8 +48,8 @@ class Pix2PixModel(BaseModel):
             for optimizer in self.optimizers:
                 self.schedulers.append(networks.get_scheduler(optimizer, opt))
 
-        if not self.isTrain or opt.continue_train:
-            self.load_networks(opt.which_epoch)
+        # if not self.isTrain or opt.continue_train:
+        #     self.load_networks(opt.which_epoch)
 
         self.print_networks(opt.verbose)
 
@@ -71,9 +71,10 @@ class Pix2PixModel(BaseModel):
 
     # no backprop gradients
     def test(self):
-        self.real_A = torch.Tensor(self.input_A, volatile=True)
-        self.fake_B = self.netG(self.real_A)
-        self.real_B = torch.Tensor(self.input_B, volatile=True)
+        with torch.no_grad():
+            self.real_A = self.input_A
+            self.fake_B = self.netG(self.real_A)
+            self.real_B = self.input_B
 
     def backward_D(self):
         # Fake

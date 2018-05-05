@@ -1,6 +1,6 @@
 import torch
 import itertools
-from util.image_pool import ImagePool
+from ..util.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
 
@@ -64,8 +64,8 @@ class CycleGANModel(BaseModel):
             for optimizer in self.optimizers:
                 self.schedulers.append(networks.get_scheduler(optimizer, opt))
 
-        if not self.isTrain or opt.continue_train:
-            self.load_networks(opt.which_epoch)
+        # if not self.isTrain or opt.continue_train:
+        #     self.load_networks(opt.which_epoch)
         self.print_networks(opt.verbose)
 
     def set_input(self, input):

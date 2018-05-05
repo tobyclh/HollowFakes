@@ -3,7 +3,8 @@ import torch.nn as nn
 from torch.nn import init
 import functools
 from torch.optim import lr_scheduler
-
+from ..util.util import tensor2im
+import numpy as np
 ###############################################################################
 # Helper Functions
 ###############################################################################
@@ -183,24 +184,26 @@ class ResnetGenerator(nn.Module):
                  norm_layer(ngf),
                  nn.ReLU(True)]
 
-        n_downsampling = 2
+        n_downsampling = 3
+        print(f'n Downsampling : {n_downsampling}')
         for i in range(n_downsampling):
             mult = 2**i
             model += [nn.Conv2d(ngf * mult, ngf * mult * 2, kernel_size=3,
-                                stride=2, padding=1, bias=use_bias),
+                                stride=4, padding=1, bias=use_bias),
                       norm_layer(ngf * mult * 2),
                       nn.ReLU(True)]
+        self.down = nn.Sequential(*model)
+        self.add_module('down', self.down)
         mult = 2**n_downsampling
+        print(f'n_blocks : {n_blocks}')
         for i in range(n_blocks):
             model += [ResnetBlock(ngf * mult, padding_type=padding_type,
                                   norm_layer=norm_layer, use_dropout=use_dropout, use_bias=use_bias)]
-        self.down = nn.Sequential(*model)
         model.clear()
-
         for i in range(n_downsampling):
             mult = 2**(n_downsampling - i)
             model += [nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2),
-                                         kernel_size=3, stride=2,
+                                         kernel_size=3, stride=4,
                                          padding=1, output_padding=1,
                                          bias=use_bias),
                       norm_layer(int(ngf * mult / 2)),
@@ -210,6 +213,7 @@ class ResnetGenerator(nn.Module):
         model += [nn.Tanh()]
 
         self.up = nn.Sequential(*model)
+        self.add_module('up', self.up)
 
     def half_forward(self, input):
         return self.up(input)
@@ -294,10 +298,8 @@ class UnetGenerator(nn.Module):
         self.model = unet_block
 
     def forward(self, input, full=True, cache=False):
-        if full:
-            return self.model(input, cache=cache)
-        else:
-            return self.model.half_forward(input)
+        return self.model(input, cache=cache, full=full)
+
 
 
 # Defines the submodule with skip connection.
@@ -355,21 +357,26 @@ class UnetSkipConnectionBlock(nn.Module):
     #     assert self.intermediate is not None, 'you need to cache the data first, forward with cache=True'
     #     return self.up(torch.cat([x, self.intermediate], 1))
 
-    def forward(self, x, cache=False):
+
+    def forward(self, x, cache=False, full=True):
         # print('Down')
-        intermediate = self._down(x)
+        if full:
+            intermediate = self._down(x)
+        else:
+            intermediate = self.intermediate
         if cache:
             self.intermediate = intermediate
+
         if len(self._submodules) > 0:
-            # print('Calling Sub')
-            intermediate = self._submodules[0](intermediate)
+            intermediate = self._submodules[0](intermediate, cache=cache, full=full)
+        
         # print('Up')
         upped = self._up(intermediate)
         # print('cat')
         if self.outermost:
             return upped
         else:
-            return torch.cat([x, upped],1)
+            return torch.cat([x.expand(upped.shape[0], *x.shape[1:]), upped],1)
 
 
 # Defines the PatchGAN discriminator with the specified arguments.
