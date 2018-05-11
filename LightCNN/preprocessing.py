@@ -4,11 +4,12 @@ from YFYF.Alignment.Aligner2D import Aligner2D
 from tqdm import tqdm
 from skimage.io import imread, imsave, imshow, show
 from skimage.transform import rotate, resize, rescale
+from skimage.draw import polygon
 import numpy as np
 images = ['data/johnson.jpg', 'data/stephen.jpg', 'data/trump.jpg']
-output_shape = [128, 128]
-ec_mc_y = 48 #check the lightcnn repo&paper for more information
-ec_y = 48 #check the lightcnn repo&paper for more information
+output_shape = [128*2, 128*2]
+ec_mc_y = 48*2 #check the lightcnn repo&paper for more information
+ec_y = 48*2 #check the lightcnn repo&paper for more information
 from multiprocessing import Pool
 import logging as log
 def rotate_pt(origin, points, angle):
@@ -23,15 +24,15 @@ def rotate_pt(origin, points, angle):
 eye_indices = [36, 45]
 mouth_indices = [48, 54]
 
-def normalize_image(image_pth):
-    img = imread(image_pth)
-    img = rescale(img, 512/max(img.shape), preserve_range=True).astype(np.uint8) #for some reason high res image doesn't work in cnn detection (upsampling?)
+def normalize_image(img, mask=False):
+    img = rescale(img, 512/max(img.shape), preserve_range=True, mode='constant').astype(np.uint8) #for some reason high res image doesn't work in cnn detection (upsampling?)
     aligner = BaseAligner()
     lms = aligner.get_landmark([img])[0]
     # _img = aligner.draw_landmark(img.copy(), lms)
     # imshow(_img)
     # show()
-
+    if lms is None:
+        return
     left_eye = lms[eye_indices[0]]
     right_eye = lms[eye_indices[1]]
     left_mouth = lms[mouth_indices[0]]
@@ -39,7 +40,7 @@ def normalize_image(image_pth):
 
     angle = np.arctan((right_eye[1] - left_eye[1])/(right_eye[0] - left_eye[0]))
     # print(f'Angle : {angle}')
-    img = rotate(img, np.degrees(angle))
+    img = rotate(img, np.degrees(angle), mode='constant')
     # imshow(img)
     # show()
 
@@ -50,7 +51,7 @@ def normalize_image(image_pth):
     # show()
 
     scale = ec_mc_y/np.linalg.norm((right_eye + left_eye)/2 - (left_mouth + right_mouth)/2, ord=2)
-    img = rescale(img, scale)
+    img = rescale(img, scale, mode='constant')
     rotated_lms *= scale
     left_eye = rotated_lms[eye_indices[0]]
     right_eye = rotated_lms[eye_indices[1]]
@@ -60,11 +61,30 @@ def normalize_image(image_pth):
     start_x = int(mid_eye[0]) - output_shape[1]//2
     end_x = int(mid_eye[0]) + output_shape[1]//2
     if start_y < 0 or end_y > img.shape[0] or start_x < 0 or end_x > img.shape[1]:
-        log.warn(f'Face too near edge, skipped : {image_pth}')
-        return None
+        # log.warn(f'Face too near edge, skipped : {image_pth}')
+        return
     # print(f'{start_y} {end_y} {start_x} {end_x}')
     cropped = img[start_y:end_y, start_x:end_x]
-    return cropped
+    if not mask:
+        return cropped
+    height, width = int(end_y - start_y), int(end_x - start_x)
+    mask = np.zeros(cropped.shape[:-1], np.uint8)
+    xs = np.asarray(rotated_lms[:,0])
+    ys = np.asarray(rotated_lms[:,1])
+    xs = xs[:27]
+    ys = ys[:27]
+    xs[17:] = xs[17:][::-1]
+    ys[17:] = ys[17:][::-1]
+    xs -= start_x
+    ys -= start_y
+    # print(f'xs : {xs}, ys : {ys}')
+    xs = np.maximum(np.minimum(xs, width), 0)
+    ys = np.maximum(np.minimum(ys, height), 0)
+    rr, cc = polygon(ys, xs)
+    mask[rr, cc] = 1
+    return cropped, mask
+
+
     # imshow(cropped)
     # show()
 
