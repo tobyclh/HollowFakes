@@ -297,8 +297,8 @@ class UnetGenerator(nn.Module):
 
         self.model = unet_block
 
-    def forward(self, input, full=True, cache=False):
-        return self.model(input, cache=cache, full=full)
+    def forward(self, input, injection, full=True, cache=False):
+        return self.model(input, injection, cache=cache, full=full)
 
 
 
@@ -353,12 +353,7 @@ class UnetSkipConnectionBlock(nn.Module):
         self._down = nn.Sequential(*self._down).cuda()
         self._up = nn.Sequential(*self._up).cuda()
 
-    # def half_forward(self, x):
-    #     assert self.intermediate is not None, 'you need to cache the data first, forward with cache=True'
-    #     return self.up(torch.cat([x, self.intermediate], 1))
-
-
-    def forward(self, x, cache=False, full=True):
+    def forward(self, x, injection=None, cache=False, full=True):
         # print('Down')
         if full:
             intermediate = self._down(x)
@@ -368,8 +363,10 @@ class UnetSkipConnectionBlock(nn.Module):
             self.intermediate = intermediate
 
         if len(self._submodules) > 0:
-            intermediate = self._submodules[0](intermediate, cache=cache, full=full)
-        
+            intermediate = self._submodules[0](intermediate, injection, cache=cache, full=full)
+        else:
+            if injection is not None:
+                intermediate = torch.cat([intermediate, injection])
         # print('Up')
         upped = self._up(intermediate)
         # print('cat')
