@@ -17,16 +17,18 @@ import torchvision.datasets as datasets
 import numpy as np
 import cv2
 
-from light_cnn import LightCNN_9Layers, LightCNN_29Layers, LightCNN_29Layers_v2
-from load_imglist import ImageList
-from preprocessing import normalize_image
+from LightCNN.light_cnn import LightCNN_9Layers, LightCNN_29Layers, LightCNN_29Layers_v2
+from LightCNN.load_imglist import ImageList
+from LightCNN.preprocessing import normalize_image
 from skimage.color import rgb2gray
+from skimage.transform import resize
 from glob import glob
 import matplotlib.pyplot as plt
+import logging as log
 
 
 
-class LightCNN_Wrapper():
+class LightCNN_Wrapped():
     def __init__(self):
         model = LightCNN_29Layers_v2(num_classes=80013)
         model.eval()
@@ -35,6 +37,15 @@ class LightCNN_Wrapper():
         model.load_state_dict(checkpoint['state_dict'])
         self.model = model
 
-    def forward(self, _input):
+    def __call__(self, _input):
         _input = _input.view(-1, 1, 128, 128).cuda()
-        return self.model(_input).squeeze()
+        _, feature = self.model(_input)
+        return feature.squeeze() 
+
+    def preprocess(self, image):
+        if image.shape[0] != 128 or image.shape[1] != 128:
+            image = resize(image, [128, 128])
+        img = rgb2gray(image)
+        img = torch.Tensor(img).unsqueeze(0).unsqueeze(0).cuda()
+        # print(f'preprocess : {img.shape}')
+        return img
