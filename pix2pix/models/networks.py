@@ -317,7 +317,7 @@ class UnetSkipConnectionBlock(nn.Module):
         
         if submodule is not None:
             self.add_module(
-                'model.' + str(len(self._submodules)), submodule)
+                'model_' + str(len(self._submodules)), submodule)
         if type(norm_layer) == functools.partial:
             use_bias = norm_layer.func == nn.InstanceNorm2d
         else:
@@ -337,6 +337,7 @@ class UnetSkipConnectionBlock(nn.Module):
             self._down = [downconv]
             self._up = [uprelu, upconv, nn.Tanh()]
         elif innermost:
+            inner_nc += 256
             upconv = nn.ConvTranspose2d(inner_nc, outer_nc,
                                         kernel_size=4, stride=2,
                                         padding=1, bias=use_bias)
@@ -366,7 +367,8 @@ class UnetSkipConnectionBlock(nn.Module):
             intermediate = self._submodules[0](intermediate, injection, cache=cache, full=full)
         else:
             if injection is not None:
-                intermediate = torch.cat([intermediate, injection])
+                # print(f'injection : {injection.shape}  intermediate : {intermediate.shape}')
+                intermediate = torch.cat([intermediate, injection], dim=1)
         # print('Up')
         upped = self._up(intermediate)
         # print('cat')

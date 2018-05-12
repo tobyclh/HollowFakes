@@ -23,7 +23,7 @@ class Pix2PixModel(BaseModel):
         # load/define networks
         self.netG = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf,
                                       opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids)
-
+        self.injection = None
         if self.isTrain:
             use_sigmoid = opt.no_lsgan
             self.netD = networks.define_D(opt.input_nc + opt.output_nc, opt.ndf,
@@ -57,23 +57,32 @@ class Pix2PixModel(BaseModel):
         AtoB = self.opt.which_direction == 'AtoB'
         input_A = input['A' if AtoB else 'B']
         input_B = input['B' if AtoB else 'A']
+        injection = input['injection'] if 'injection' in input else None
         if len(self.gpu_ids) > 0:
             input_A = input_A.cuda(self.gpu_ids[0], async=True)
             input_B = input_B.cuda(self.gpu_ids[0], async=True)
+            injection = injection.cuda(self.gpu_ids[0], async=True)
         self.input_A = input_A
         self.input_B = input_B
-        self.image_paths = input['A_paths' if AtoB else 'B_paths']
+        self.injection = injection
+        self.image_paths = input['paths']#input['A_paths' if AtoB else 'B_paths']
 
     def forward(self):
         self.real_A = self.input_A
-        self.fake_B = self.netG(self.real_A)
+        if self.injection is not None:
+            self.fake_B = self.netG(self.real_A, self.injection)
+        else:
+            self.fake_B = self.netG(self.real_A)
         self.real_B = self.input_B
 
     # no backprop gradients
     def test(self):
         with torch.no_grad():
             self.real_A = self.input_A
-            self.fake_B = self.netG(self.real_A)
+            if self.injection is not None:
+                self.fake_B = self.netG(self.real_A, self.injection)
+            else:
+                self.fake_B = self.netG(self.real_A)
             self.real_B = self.input_B
 
     def backward_D(self):
