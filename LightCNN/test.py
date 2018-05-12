@@ -23,6 +23,7 @@ from preprocessing import normalize_image
 from skimage.color import rgb2gray
 from glob import glob
 import matplotlib.pyplot as plt
+from skimage.io import imread
 
 person_A = glob('/home/toby/Documents/HollowFakes/data/donald/*.*')
 person_B =  glob('/home/toby/Documents/HollowFakes/data/boris/*.*')
@@ -39,6 +40,7 @@ with torch.no_grad():
         donald_feature = []
         boris_feature = []
         for image in person_A:
+            image = imread(image)
             img = normalize_image(image)
             if img is None:
                 continue
@@ -51,6 +53,7 @@ with torch.no_grad():
         print(f'donald_feature : shape {donald_feature.shape}, std {donald_feature.std(0).mean(0)}')
 
         for image in person_B:
+            image = imread(image)
             img = normalize_image(image)
             if img is None:
                 continue
@@ -68,6 +71,7 @@ with torch.no_grad():
         donald = donald_feature.mean(0)
         boris = boris_feature.mean(0)
         for test_image in test:
+            image = imread(image)
             img = normalize_image(test_image)
             if img is None:
                 continue
@@ -79,7 +83,7 @@ with torch.no_grad():
             DonaldDistance = np.abs(feature - donald).mean() 
             BorisDistance = np.abs(feature - boris).mean()
             decision = 'is Trump' if DonaldDistance < BorisDistance else 'is Boris'
-            print(f'This image\'s {os.path.basename(test_image)} {decision}, TrumpBoris Ratio : {DonaldDistance}:{BorisDistance}')
+            print(f'This image {os.path.basename(test_image)} {decision}, TrumpBoris Ratio : {DonaldDistance}:{BorisDistance}')
             plt.imshow(_img)
             plt.show()
 
