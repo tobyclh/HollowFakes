@@ -9,8 +9,8 @@ from skimage.io import imread, imsave, imshow, show
 import matplotlib.pyplot as plt
 import numpy as np
 from time import time, sleep
-source = imread('trump.jpg')
-target = imread('/home/toby/Documents/HollowFakes/data/test_images/Boris-Johnson.jpg')
+source = imread('data/trump.jpg')
+target = imread('data/test_images/Boris-Johnson.jpg')
 
 # print(f'ori shape {target.shape}, aspect {aspect}, new {height} {width}')
 aligner = Aligner()
@@ -20,7 +20,7 @@ cropped = aligner.crop(imgs, dets, square=True)
 print(f'Cropped : {cropped[1].shape}')
 
 aspect = cropped[1].shape[0] / cropped[1].shape[1]
-height = int(600)
+height = int(1000)
 width = int(height/aspect)
 fitter = Fitter()
 scale = cropped[1].shape[0] // fitter.image_size

@@ -49,3 +49,10 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+HollowFakes/MUNIT/datasets/edges2handbags/
+
+HollowFakes/MUNIT/models/
+
+HollowFakes/MUNIT/inputs/
+
+HollowFakes/MUNIT/results/
