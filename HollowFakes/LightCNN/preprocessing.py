@@ -24,10 +24,13 @@ def rotate_pt(origin, points, angle):
 eye_indices = [36, 45]
 mouth_indices = [48, 54]
 
+import face_alignment
+fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, enable_cuda=True, flip_input=False)
+
+
 def normalize_image(img, mask=False):
     img = rescale(img, 512/max(img.shape), preserve_range=True, mode='constant').astype(np.uint8) #for some reason high res image doesn't work in cnn detection (upsampling?)
-    aligner = BaseAligner()
-    lms = aligner.get_landmark([img])[0]
+    lms = fa.get_landmarks(img)[0]
     # _img = aligner.draw_landmark(img.copy(), lms)
     # imshow(_img)
     # show()
